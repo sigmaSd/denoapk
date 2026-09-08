@@ -1,17 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  The denapk shell manifest.
+  Reference manifest for the shell.
 
-  Two things here are deliberate and load-bearing for stamping:
+  Not compiled directly — src/build.ts's manifestFor() generates the real one
+  per app (see that file for why: aapt2 link is fast enough to just regenerate
+  and compile from source rather than binary-patch a template). This copy
+  exists so the shell's Java sources have a matching manifest to build and
+  test against standalone, and stays in sync with manifestFor() by hand.
 
-  1. `package` and `android:label` are literal strings, so both live in the
-     compiled AXML string pool and can be rewritten by src/axml.ts without
-     touching resources.arsc.
-
-  2. `android:name` on the activity is FULLY QUALIFIED. A leading-dot name
-     resolves against the manifest `package` attribute, so renaming the package
-     during stamping would send Android looking for a class that isn't in the
-     dex. Spelling it out is what makes the rename safe.
+  `android:name` on the activity is FULLY QUALIFIED. A leading-dot name
+  resolves against the manifest `package` attribute, which changes per app —
+  spelling it out is what makes renaming the package safe.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
   package="dev.denapk.shell">
@@ -22,7 +21,13 @@
     android:icon="@mipmap/ic_launcher"
     android:usesCleartextTraffic="false"
     android:allowBackup="true"
-    android:supportsRtl="true">
+    android:supportsRtl="true"
+    android:theme="@android:style/Theme.Material.NoActionBar">
+    <!--
+      The shell shows a single full-bleed WebView. The default theme's
+      ActionBar would draw the app label as a second, native header on top of
+      the page's own — NoActionBar removes it rather than sizing around it.
+    -->
     <activity
       android:name="dev.denapk.shell.MainActivity"
       android:exported="true"

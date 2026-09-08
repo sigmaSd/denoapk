@@ -60,7 +60,14 @@ function manifestFor(app: AppConfig): string {
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="false"
         android:allowBackup="true"
-        android:supportsRtl="true">
+        android:supportsRtl="true"
+        android:theme="@android:style/Theme.Material.NoActionBar">
+        <!--
+          The shell shows a single full-bleed WebView. The default theme's
+          ActionBar would draw the app label as a second, native header on
+          top of the page's own — NoActionBar removes it rather than trying
+          to size around it.
+        -->
 
         <activity
             android:name="dev.denapk.shell.MainActivity"

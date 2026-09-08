@@ -4,11 +4,15 @@ import android.app.Activity;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.WindowInsets;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.FrameLayout;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -57,7 +61,31 @@ public final class MainActivity extends Activity {
       }
     });
 
-    setContentView(webView);
+    // Apps targeting SDK 35 get edge-to-edge forced on by the system: content
+    // draws from y=0 under the status/nav bars unless something pads it.
+    //
+    // The padding cannot go on the WebView itself — WebView's own rendering
+    // pipeline does not honour View.setPadding() (a known quirk: the padded
+    // area appears in layout but the page still draws into it). A plain
+    // container laid out around the WebView does not have that problem, so
+    // the container gets the padding and the WebView is simply sized to fit
+    // what's left of it.
+    FrameLayout root = new FrameLayout(this);
+    root.addView(webView, new FrameLayout.LayoutParams(
+        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+    root.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+      @Override
+      public WindowInsets onApplyWindowInsets(View v, WindowInsets insets) {
+        v.setPadding(
+            insets.getSystemWindowInsetLeft(),
+            insets.getSystemWindowInsetTop(),
+            insets.getSystemWindowInsetRight(),
+            insets.getSystemWindowInsetBottom());
+        return insets.consumeSystemWindowInsets();
+      }
+    });
+
+    setContentView(root);
     webView.loadUrl(BASE_URL + "index.html");
   }
 
@@ -92,7 +120,6 @@ public final class MainActivity extends Activity {
           new java.io.ByteArrayInputStream(new byte[0]));
     }
   }
-
 
   @Override
   public void onBackPressed() {
