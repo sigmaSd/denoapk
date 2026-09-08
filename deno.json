@@ -1,0 +1,19 @@
+{
+  "name": "@sigmasd/denapk",
+  "version": "0.1.0",
+  "license": "MIT",
+  "exports": "./src/cli.ts",
+  "imports": {
+    "@std/assert": "jsr:@std/assert@1",
+    "@std/fs": "jsr:@std/fs@1",
+    "@std/path": "jsr:@std/path@1",
+    "@std/cli": "jsr:@std/cli@1"
+  },
+  "exclude": [
+    "templates"
+  ],
+  "tasks": {
+    "sdk": "deno run --allow-all src/sdk.ts",
+    "build": "deno run --allow-all src/cli.ts"
+  }
+}

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The denapk shell manifest.
+
+  Two things here are deliberate and load-bearing for stamping:
+
+  1. `package` and `android:label` are literal strings, so both live in the
+     compiled AXML string pool and can be rewritten by src/axml.ts without
+     touching resources.arsc.
+
+  2. `android:name` on the activity is FULLY QUALIFIED. A leading-dot name
+     resolves against the manifest `package` attribute, so renaming the package
+     during stamping would send Android looking for a class that isn't in the
+     dex. Spelling it out is what makes the rename safe.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+  package="dev.denapk.shell">
+  <uses-permission android:name="android.permission.INTERNET" />
+
+  <application
+    android:label="denapk app"
+    android:icon="@mipmap/ic_launcher"
+    android:usesCleartextTraffic="false"
+    android:allowBackup="true"
+    android:supportsRtl="true">
+    <activity
+      android:name="dev.denapk.shell.MainActivity"
+      android:exported="true"
+      android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout|density|uiMode">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+    </activity>
+  </application>
+</manifest>
