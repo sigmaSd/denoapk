@@ -1,0 +1,31 @@
+name: Publish
+
+# JSR's own recommended trigger: run on every push to main. `deno publish`
+# is a clean no-op when the version in deno.json is already published, so
+# this is safe to leave running on every push — bump `version` in deno.json
+# when you actually want a new release to go out.
+#
+# workflow_dispatch is added on top of that so a run can be retriggered by
+# hand (e.g. right after linking this repo to the package in JSR's package
+# settings, without needing an empty commit).
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # The OIDC ID token is what JSR authenticates the publish with — no
+      # JSR_TOKEN or any other secret is configured or needed. This is also
+      # what makes JSR generate a provenance attestation (SLSA, logged to the
+      # public Sigstore Rekor transparency log) for the published version,
+      # linking it back to this exact repo, workflow, and commit.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: denoland/setup-deno@v2
+      - run: deno publish
