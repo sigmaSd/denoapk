@@ -14,6 +14,8 @@
   ],
   "tasks": {
     "sdk": "deno run --allow-all src/sdk.ts",
-    "build": "deno run --allow-all src/cli.ts"
+    "build": "deno run --allow-all src/cli.ts",
+    "test:shell": "deno run --allow-all scripts/test_shell.ts",
+    "test": "deno test --allow-all && deno task test:shell"
   }
 }
