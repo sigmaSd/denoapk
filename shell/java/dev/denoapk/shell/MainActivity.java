@@ -29,14 +29,22 @@ import java.io.InputStream;
  * and crypto.subtle available. The app keeps its tokens in localStorage, so
  * this is load-bearing, not cosmetic.
  *
- * Two paths are handled specially, matching what the Deno host does:
+ * Three paths are handled specially, matching what the Deno host does:
  *
  *   /__denoapk/runtime.js       the fetch shim, from assets
  *   /__denoapk/proxy/<url>      a request the page cannot make itself
+ *   /__denoapk/exec/<req>       run a native subprocess (see ExecClient)
  *
  * Everything else maps to assets/www/. We implement the asset mapping directly
  * instead of using androidx.webkit's WebViewAssetLoader so the shell builds
  * against android.jar alone, with no AAR dependencies to resolve.
+ *
+ * A fourth capability, streaming a subprocess's output (denoapk.execStream()
+ * in runtime.js), is NOT one of the paths above — fetch()'s WebResourceResponse
+ * can't actually stream on this WebView (verified: it buffers to EOF before
+ * the page sees anything). It goes through ExecStreamBridge instead, an
+ * addJavascriptInterface object that pushes each chunk to the page directly
+ * via evaluateJavascript() rather than the page pulling via fetch().
  *
  * Camera permission (for QR-code scanning and similar) works the same way:
  * `Activity.requestPermissions`/`checkSelfPermission`/`onRequestPermissionsResult`
@@ -82,6 +90,10 @@ public final class MainActivity extends Activity {
     settings.setDomStorageEnabled(true);
     settings.setAllowFileAccess(false);
     settings.setAllowContentAccess(false);
+
+    // Must be registered before loadUrl() so it's present for scripts that
+    // run during initial page load (runtime.js's <script> tag included).
+    webView.addJavascriptInterface(new ExecStreamBridge(webView), "DenoapkExecStreamBridge");
 
     webView.setWebViewClient(new WebViewClient() {
       @Override
@@ -200,6 +212,8 @@ public final class MainActivity extends Activity {
     switch (route.kind) {
       case PROXY:
         return ProxyClient.perform(request, route.detail);
+      case EXEC:
+        return ExecClient.perform(route.detail);
       case RUNTIME:
         return asset(route.detail, "text/javascript");
       case ASSET:

@@ -9,7 +9,18 @@ public final class Router {
 
   public static final String ASSET_HOST = "appassets.androidplatform.net";
   public static final String PROXY_PREFIX = "/__denoapk/proxy/";
+  public static final String EXEC_PREFIX = "/__denoapk/exec/";
   public static final String RUNTIME_PATH = "/__denoapk/runtime.js";
+
+  // Streaming a subprocess (denoapk.execStream()) does NOT go through this
+  // router at all on Android — verified on-device that shouldInterceptRequest
+  // /fetch()'s WebResourceResponse buffers the whole InputStream to EOF
+  // before delivering anything to the page, so an unbounded process would
+  // never deliver a byte. It uses ExecStreamBridge (addJavascriptInterface +
+  // evaluateJavascript push) instead. A desktop host still implements
+  // /__denoapk/exec-stream/ over plain fetch()-streaming, since Deno's HTTP
+  // server doesn't have this limitation — runtime.js's denoapk.execStream()
+  // picks the transport per platform.
 
   /** What a request should be served by. */
   public enum Kind {
@@ -17,6 +28,8 @@ public final class Router {
     PASSTHROUGH,
     /** Replay it natively; `detail` is the encoded target URL. */
     PROXY,
+    /** Run a native subprocess to completion; `detail` is the encoded {cmd,args} JSON. */
+    EXEC,
     /** The fetch shim; `detail` is the asset name. */
     RUNTIME,
     /** A bundled web asset; `detail` is the asset name. */
@@ -51,6 +64,9 @@ public final class Router {
 
     if (path.startsWith(PROXY_PREFIX)) {
       return new Route(Kind.PROXY, path.substring(PROXY_PREFIX.length()));
+    }
+    if (path.startsWith(EXEC_PREFIX)) {
+      return new Route(Kind.EXEC, path.substring(EXEC_PREFIX.length()));
     }
     if (RUNTIME_PATH.equals(path)) {
       return new Route(Kind.RUNTIME, "runtime.js");

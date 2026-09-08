@@ -38,6 +38,23 @@ public final class RouterTest {
     r = Router.route(Router.ASSET_HOST, "/__denoapk/proxy/" + encoded);
     eq("PROXY:" + encoded, r.toString(), "proxy target survives routing");
 
+    // The exec route carries the encoded {cmd,args} JSON through untouched.
+    String execEncoded = "%7B%22cmd%22%3A%22%2Fsystem%2Fbin%2Fping%22%7D";
+    r = Router.route(Router.ASSET_HOST, "/__denoapk/exec/" + execEncoded);
+    eq("EXEC:" + execEncoded, r.toString(), "exec request survives routing");
+
+    // A path that merely looks like the exec prefix must not be treated as one.
+    r = Router.route(Router.ASSET_HOST, "/__denoapk/execnot/x");
+    eq("ASSET:www/__denoapk/execnot/x", r.toString(), "near-miss exec prefix");
+
+    // exec-stream is intentionally NOT a special route on Android (see
+    // Router's own comment: shouldInterceptRequest can't actually stream, so
+    // Android uses ExecStreamBridge instead) -- it falls through to ASSET
+    // like any unrecognized /__denoapk/* path.
+    r = Router.route(Router.ASSET_HOST, "/__denoapk/exec-stream/" + execEncoded);
+    eq("ASSET:www/__denoapk/exec-stream/" + execEncoded, r.toString(),
+      "exec-stream is not routed on Android");
+
     // Anything not on the asset host is none of our business.
     r = Router.route("claude.ai", "/api/organizations");
     eq("PASSTHROUGH:null", r.toString(), "foreign host passes through");
