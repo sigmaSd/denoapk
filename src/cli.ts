@@ -12,14 +12,13 @@
  *   denoapk doctor
  */
 
-import { dirname, fromFileUrl, join, resolve } from "@std/path";
+import { join, resolve } from "@std/path";
 import { parseArgs } from "@std/cli/parse-args";
 import { ensureSdk } from "./sdk.ts";
 import { loadConfig } from "./config.ts";
 import { buildApk } from "./build.ts";
 import { debugKeystorePath, verify } from "./sign.ts";
-
-const DENOAPK_DIR = dirname(dirname(fromFileUrl(import.meta.url)));
+import { resolveDenoapkDir } from "./assets.ts";
 
 function usage(): never {
   console.error(`denoapk — package a deno desktop app as an Android APK
@@ -52,8 +51,9 @@ async function cmdBuild(args: string[]) {
   console.error(`  icon    ${app.icon ?? "(shell default)"}`);
 
   const sdk = await ensureSdk();
+  const denoapkDir = await resolveDenoapkDir();
   const started = performance.now();
-  await buildApk({ sdk, app, denoapkDir: DENOAPK_DIR, output });
+  await buildApk({ sdk, app, denoapkDir, output });
   const ms = Math.round(performance.now() - started);
 
   const size = (await Deno.stat(output)).size;

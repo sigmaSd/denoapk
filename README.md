@@ -9,9 +9,17 @@ with no tracking issue. Its default backend is already "OS WebView pointed at
 your web code", so denoapk does the same thing with an Android WebView.
 
 ```
+deno install -g -A jsr:@sigmasd/denoapk
+
 denoapk build ~/my-app        # -> dist/my-app.apk
 adb install -r dist/my-app.apk
 ```
+
+[sigmaSd/aiuse](https://github.com/sigmaSd/aiuse) is a real `deno desktop` app
+packaged with this — its `report.ts` and `web/` are a working example of
+everything below: the shared `web/` layout, `runtime.js` hosted from the Deno
+side, and `desktop.app` driving both the desktop and Android builds from one
+`deno.json`.
 
 ## What it needs from your project
 
