@@ -95,6 +95,26 @@ public final class MainActivity extends Activity {
       public void onPermissionRequest(PermissionRequest request) {
         handlePermissionRequest(request);
       }
+
+      // Without this override, page console.log/warn/error never reach
+      // logcat at all — WebView has no default console-forwarding behaviour,
+      // unlike a full browser's own devtools. Forwarding it here is what
+      // makes any future "something silently isn't working" debuggable.
+      @Override
+      public boolean onConsoleMessage(android.webkit.ConsoleMessage cm) {
+        String where = cm.sourceId() + ":" + cm.lineNumber();
+        switch (cm.messageLevel()) {
+          case ERROR:
+            Log.e(TAG, "[console] " + where + " " + cm.message());
+            break;
+          case WARNING:
+            Log.w(TAG, "[console] " + where + " " + cm.message());
+            break;
+          default:
+            Log.i(TAG, "[console] " + where + " " + cm.message());
+        }
+        return true;
+      }
     });
 
     // Apps targeting SDK 35 get edge-to-edge forced on by the system: content

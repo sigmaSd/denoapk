@@ -40,11 +40,12 @@ final class ProxyClient {
     try {
       String decoded = URLDecoder.decode(encodedTarget, "UTF-8");
       target = new URL(decoded);
-      // https only, matching android:usesCleartextTraffic="false" in the
-      // manifest. Allowing http here would route around that setting, since
-      // the connection is made from native code rather than by the WebView.
-      if (!"https".equals(target.getProtocol())) {
-        return error(400, "only https targets are proxied");
+      // https is always fine. Plain http is allowed only to a private/
+      // loopback IPv4 literal (see NetworkTargets) — the exception that
+      // makes a phone-to-desktop LAN handoff possible, without opening the
+      // door to arbitrary cleartext internet fetches through this proxy.
+      if (!NetworkTargets.isAllowed(target.getProtocol(), target.getHost())) {
+        return error(400, "target not allowed: " + target.getProtocol() + "://" + target.getHost());
       }
     } catch (Exception e) {
       return error(400, "bad proxy target");

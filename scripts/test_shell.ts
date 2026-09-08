@@ -29,15 +29,17 @@ try {
       out,
       join(root, "shell/java/dev/denoapk/shell/Router.java"),
       join(root, "shell/java/dev/denoapk/shell/Permissions.java"),
+      join(root, "shell/java/dev/denoapk/shell/NetworkTargets.java"),
       join(root, "shell/test/RouterTest.java"),
       join(root, "shell/test/PermissionsTest.java"),
+      join(root, "shell/test/NetworkTargetsTest.java"),
     ],
     stdout: "inherit",
     stderr: "inherit",
   }).output();
   if (compile.code !== 0) Deno.exit(compile.code);
 
-  for (const cls of ["RouterTest", "PermissionsTest"]) {
+  for (const cls of ["RouterTest", "PermissionsTest", "NetworkTargetsTest"]) {
     const run = await new Deno.Command("java", {
       args: ["-cp", `${out}:${sdk.androidJar}`, cls],
       stdout: "inherit",

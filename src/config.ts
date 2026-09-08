@@ -24,6 +24,22 @@ export const KNOWN_PERMISSIONS: Record<string, string> = {
   camera: "android.permission.CAMERA",
 };
 
+/**
+ * Capabilities that also live in the `android.permissions` array — one
+ * simple opt-in surface — but control a manifest *attribute* rather than a
+ * `<uses-permission>` element, so they don't belong in KNOWN_PERMISSIONS'
+ * name-to-constant mapping. See build.ts's manifestFor() for what each does.
+ */
+export const KNOWN_CAPABILITIES: ReadonlySet<string> = new Set([
+  // usesCleartextTraffic="true" instead of "false". Needed for the local
+  // pairing server (a phone fetching a one-time credential handoff from the
+  // desktop's own LAN address, which has no certificate) — Android blocks
+  // cleartext HTTP at the OS level regardless of what the app's own code
+  // allows, so ProxyClient.java's own private-IP-only check (NetworkTargets)
+  // is a no-op unless this is also set.
+  "lan-cleartext",
+]);
+
 export interface AppConfig {
   /** Project root (the directory holding deno.json). */
   root: string;
@@ -121,12 +137,13 @@ export async function loadConfig(projectDir: string): Promise<AppConfig> {
   const permissions: string[] = Array.isArray(json.android?.permissions)
     ? json.android.permissions
     : [];
+  const known = [...Object.keys(KNOWN_PERMISSIONS), ...KNOWN_CAPABILITIES];
   for (const p of permissions) {
-    if (!(p in KNOWN_PERMISSIONS)) {
+    if (!(p in KNOWN_PERMISSIONS) && !KNOWN_CAPABILITIES.has(p)) {
       console.error(
         `warning: android.permissions has unknown entry ${
           JSON.stringify(p)
-        } — ignoring it. Known: ${Object.keys(KNOWN_PERMISSIONS).join(", ")}`,
+        } — ignoring it. Known: ${known.join(", ")}`,
       );
     }
   }

@@ -1,6 +1,10 @@
 import { assertEquals, assertRejects, assertStringIncludes } from "@std/assert";
 import { join } from "@std/path";
-import { loadConfig, validatePackageName } from "./config.ts";
+import {
+  KNOWN_PERMISSIONS,
+  loadConfig,
+  validatePackageName,
+} from "./config.ts";
 
 async function project(
   denoJson: Record<string, unknown>,
@@ -115,6 +119,19 @@ Deno.test("an unknown permission warns but does not fail the build", async () =>
   // to known permissions; loadConfig's job is just to read the list and warn.
   const app = await loadConfig(dir);
   assertEquals(app.permissions, ["camera", "telepathy"]);
+});
+
+Deno.test("lan-cleartext is a recognized entry, not a <uses-permission>", async () => {
+  const dir = await project({
+    desktop: { app: { name: "X" } },
+    android: { permissions: ["lan-cleartext"] },
+  });
+  const app = await loadConfig(dir);
+  assertEquals(app.permissions, ["lan-cleartext"]);
+  // It's a KNOWN_CAPABILITIES entry, not in KNOWN_PERMISSIONS' name-to-constant
+  // map — build.ts reads it directly to control usesCleartextTraffic, so it
+  // must never also produce a bogus <uses-permission> line.
+  assertEquals("lan-cleartext" in KNOWN_PERMISSIONS, false);
 });
 
 Deno.test("a non-array android.permissions is treated as empty, not an error", async () => {

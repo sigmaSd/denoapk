@@ -57,6 +57,11 @@ function manifestFor(app: AppConfig): string {
     .map((name) => `    <uses-permission android:name="${name}" />`)
     .join("\n");
 
+  // See config.ts's KNOWN_CAPABILITIES — this one controls an attribute, not
+  // a <uses-permission> element, so it's read from the same array directly
+  // rather than through the name-to-constant KNOWN_PERMISSIONS map.
+  const cleartext = app.permissions.includes("lan-cleartext");
+
   return `<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="${xmlEscape(app.packageName)}"
@@ -70,7 +75,7 @@ ${extraPermissions ? extraPermissions + "\n" : ""}
     <application
         android:label="${xmlEscape(app.name)}"
         android:icon="@mipmap/ic_launcher"
-        android:usesCleartextTraffic="false"
+        android:usesCleartextTraffic="${cleartext}"
         android:allowBackup="true"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.NoActionBar">
