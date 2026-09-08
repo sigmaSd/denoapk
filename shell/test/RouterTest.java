@@ -1,4 +1,4 @@
-import dev.denapk.shell.Router;
+import dev.denoapk.shell.Router;
 
 /**
  * Plain-JVM tests for the shell's request routing.
@@ -30,12 +30,12 @@ public final class RouterTest {
     eq("ASSET:www/dist/app.js", r.toString(), "nested asset");
 
     // The shim is served from the assets root, not from www/.
-    r = Router.route(Router.ASSET_HOST, "/__denapk/runtime.js");
+    r = Router.route(Router.ASSET_HOST, "/__denoapk/runtime.js");
     eq("RUNTIME:runtime.js", r.toString(), "runtime shim");
 
     // The proxy carries the encoded target through untouched.
     String encoded = "https%3A%2F%2Fclaude.ai%2Fapi%2Forganizations";
-    r = Router.route(Router.ASSET_HOST, "/__denapk/proxy/" + encoded);
+    r = Router.route(Router.ASSET_HOST, "/__denoapk/proxy/" + encoded);
     eq("PROXY:" + encoded, r.toString(), "proxy target survives routing");
 
     // Anything not on the asset host is none of our business.
@@ -45,8 +45,8 @@ public final class RouterTest {
     eq("PASSTHROUGH:null", r.toString(), "null host passes through");
 
     // A path that merely looks like the proxy prefix must not be treated as one.
-    r = Router.route(Router.ASSET_HOST, "/__denapk/proxynot/x");
-    eq("ASSET:www/__denapk/proxynot/x", r.toString(), "near-miss prefix");
+    r = Router.route(Router.ASSET_HOST, "/__denoapk/proxynot/x");
+    eq("ASSET:www/__denoapk/proxynot/x", r.toString(), "near-miss prefix");
 
     // MIME types drive whether the WebView parses or downloads a response.
     eq("text/html", Router.mimeOf("www/index.html"), "html mime");

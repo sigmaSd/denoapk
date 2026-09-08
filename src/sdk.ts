@@ -1,14 +1,14 @@
 /**
  * Android SDK bootstrap.
  *
- * denapk needs only three things from the SDK — aapt2/d8 to build the shell
+ * denoapk needs only three things from the SDK — aapt2/d8 to build the shell
  * template once, and zipalign/apksigner to stamp and sign each app. No Gradle,
  * no Android Studio, no AGP (which matters: AGP's supported-JDK window is
  * narrow and this machine runs JDK 25).
  *
  * If ANDROID_HOME / ANDROID_SDK_ROOT already points at an SDK with the pieces
  * we need, use it. Otherwise download the command-line tools into
- * ~/.cache/denapk/android-sdk and have sdkmanager fetch the rest.
+ * ~/.cache/denoapk/android-sdk and have sdkmanager fetch the rest.
  */
 
 import { join } from "@std/path";
@@ -32,7 +32,7 @@ export interface Sdk {
 export function cacheDir(): string {
   const base = Deno.env.get("XDG_CACHE_HOME") ??
     join(Deno.env.get("HOME")!, ".cache");
-  return join(base, "denapk");
+  return join(base, "denoapk");
 }
 
 function layout(root: string): Sdk {
@@ -97,7 +97,7 @@ export async function ensureSdk(): Promise<Sdk> {
     }
     console.error(
       `${envVar}=${root} is missing build-tools ${BUILD_TOOLS_VERSION} or ` +
-        `${PLATFORM_VERSION}; falling back to the denapk cache`,
+        `${PLATFORM_VERSION}; falling back to the denoapk cache`,
     );
   }
 

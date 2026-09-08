@@ -70,7 +70,7 @@ function manifestFor(app: AppConfig): string {
         -->
 
         <activity
-            android:name="dev.denapk.shell.MainActivity"
+            android:name="dev.denoapk.shell.MainActivity"
             android:exported="true"
             android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout|density|uiMode">
             <intent-filter>
@@ -127,7 +127,7 @@ async function checkReferences(webDir: string) {
     const ref = m[1];
     if (/^(https?:)?\/\//.test(ref) || ref.startsWith("data:")) continue;
     // Host-provided paths are served by the shell, not from assets.
-    if (ref.startsWith("/__denapk/")) continue;
+    if (ref.startsWith("/__denoapk/")) continue;
     const path = join(webDir, ref.replace(/^\.?\//, "").split(/[?#]/)[0]);
     if (!await exists(path)) {
       console.error(
@@ -141,19 +141,19 @@ async function checkReferences(webDir: string) {
 export interface BuildOptions {
   sdk: Sdk;
   app: AppConfig;
-  /** denapk's own directory (holds shell/ and runtime/). */
-  denapkDir: string;
+  /** denoapk's own directory (holds shell/ and runtime/). */
+  denoapkDir: string;
   /** Where to write the finished APK. */
   output: string;
 }
 
 export async function buildApk(opts: BuildOptions): Promise<string> {
-  const { sdk, app, denapkDir, output } = opts;
-  const shellDir = join(denapkDir, "shell");
+  const { sdk, app, denoapkDir, output } = opts;
+  const shellDir = join(denoapkDir, "shell");
 
   await checkReferences(app.webDir);
 
-  const work = await Deno.makeTempDir({ prefix: "denapk-" });
+  const work = await Deno.makeTempDir({ prefix: "denoapk-" });
   try {
     // 1. The shell's dex — cached across builds, so usually a no-op.
     const dex = await ensureDex(sdk, shellDir);
@@ -197,10 +197,10 @@ export async function buildApk(opts: BuildOptions): Promise<string> {
     const assets = join(staging, "assets");
     const copied = await copyWebAssets(app.webDir, join(assets, "www"));
     console.error(`  packaged ${copied} web files`);
-    // The shim is denapk's, not the app's, so both hosts always agree on the
+    // The shim is denoapk's, not the app's, so both hosts always agree on the
     // wire format even if the app's checkout is older.
     await copy(
-      join(denapkDir, "runtime", "runtime.js"),
+      join(denoapkDir, "runtime", "runtime.js"),
       join(assets, "runtime.js"),
     );
 

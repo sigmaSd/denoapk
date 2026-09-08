@@ -1,6 +1,6 @@
 #!/usr/bin/env -S deno run --allow-all
 /**
- * denapk — package a `deno desktop` app as an Android APK.
+ * denoapk — package a `deno desktop` app as an Android APK.
  *
  * `deno desktop` has no mobile target and no plans published for one, but its
  * default backend is already "OS WebView pointed at your web code". This does
@@ -8,8 +8,8 @@
  * web/ directory can ship to a phone.
  *
  * Usage:
- *   denapk build [projectDir] [-o out.apk]
- *   denapk doctor
+ *   denoapk build [projectDir] [-o out.apk]
+ *   denoapk doctor
  */
 
 import { dirname, fromFileUrl, join, resolve } from "@std/path";
@@ -19,14 +19,14 @@ import { loadConfig } from "./config.ts";
 import { buildApk } from "./build.ts";
 import { debugKeystorePath, verify } from "./sign.ts";
 
-const DENAPK_DIR = dirname(dirname(fromFileUrl(import.meta.url)));
+const DENOAPK_DIR = dirname(dirname(fromFileUrl(import.meta.url)));
 
 function usage(): never {
-  console.error(`denapk — package a deno desktop app as an Android APK
+  console.error(`denoapk — package a deno desktop app as an Android APK
 
 Usage:
-  denapk build [projectDir] [-o <out.apk>]   build an APK (default: .)
-  denapk doctor                              show toolchain status
+  denoapk build [projectDir] [-o <out.apk>]   build an APK (default: .)
+  denoapk doctor                              show toolchain status
 
 Configuration comes from the project's deno.json \`desktop.app\` block:
   name        -> launcher label
@@ -53,7 +53,7 @@ async function cmdBuild(args: string[]) {
 
   const sdk = await ensureSdk();
   const started = performance.now();
-  await buildApk({ sdk, app, denapkDir: DENAPK_DIR, output });
+  await buildApk({ sdk, app, denoapkDir: DENOAPK_DIR, output });
   const ms = Math.round(performance.now() - started);
 
   const size = (await Deno.stat(output)).size;

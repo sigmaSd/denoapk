@@ -9,7 +9,7 @@
 import { dirname, fromFileUrl, join } from "@std/path";
 
 const root = dirname(dirname(fromFileUrl(import.meta.url)));
-const out = await Deno.makeTempDir({ prefix: "denapk-shell-test-" });
+const out = await Deno.makeTempDir({ prefix: "denoapk-shell-test-" });
 
 try {
   const compile = await new Deno.Command("javac", {
@@ -19,7 +19,7 @@ try {
       "-nowarn",
       "-d",
       out,
-      join(root, "shell/java/dev/denapk/shell/Router.java"),
+      join(root, "shell/java/dev/denoapk/shell/Router.java"),
       join(root, "shell/test/RouterTest.java"),
     ],
     stdout: "inherit",

@@ -1,4 +1,4 @@
-package dev.denapk.shell;
+package dev.denoapk.shell;
 
 /**
  * Request routing, kept free of Android types so it can be tested on a plain
@@ -8,8 +8,8 @@ package dev.denapk.shell;
 public final class Router {
 
   public static final String ASSET_HOST = "appassets.androidplatform.net";
-  public static final String PROXY_PREFIX = "/__denapk/proxy/";
-  public static final String RUNTIME_PATH = "/__denapk/runtime.js";
+  public static final String PROXY_PREFIX = "/__denoapk/proxy/";
+  public static final String RUNTIME_PATH = "/__denoapk/runtime.js";
 
   /** What a request should be served by. */
   public enum Kind {

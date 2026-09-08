@@ -1,4 +1,4 @@
-package dev.denapk.shell;
+package dev.denoapk.shell;
 
 import android.util.Log;
 import android.webkit.WebResourceRequest;
@@ -19,8 +19,8 @@ import java.util.Map;
  *
  * A WebView is a real browser: it silently drops Cookie, User-Agent, Referer
  * and Sec-Fetch-* from fetch(), and the provider APIs send no CORS headers.
- * So host/runtime.js rewrites cross-origin requests to /__denapk/proxy/<url>
- * with every header moved under an `x-denapk-h-` prefix, which survives. This
+ * So host/runtime.js rewrites cross-origin requests to /__denoapk/proxy/<url>
+ * with every header moved under an `x-denoapk-h-` prefix, which survives. This
  * class restores the real names and replays the request from native code,
  * where neither restriction applies.
  *
@@ -29,8 +29,8 @@ import java.util.Map;
  */
 final class ProxyClient {
 
-  private static final String TAG = "denapk";
-  private static final String HEADER_PREFIX = "x-denapk-h-";
+  private static final String TAG = "denoapk";
+  private static final String HEADER_PREFIX = "x-denoapk-h-";
   private static final int TIMEOUT_MS = 30_000;
 
   private ProxyClient() {}

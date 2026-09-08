@@ -1,5 +1,5 @@
 {
-  "name": "@sigmasd/denapk",
+  "name": "@sigmasd/denoapk",
   "version": "0.1.0",
   "license": "MIT",
   "exports": "./src/cli.ts",

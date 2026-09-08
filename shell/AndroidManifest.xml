@@ -13,11 +13,11 @@
   spelling it out is what makes renaming the package safe.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-  package="dev.denapk.shell">
+  package="dev.denoapk.shell">
   <uses-permission android:name="android.permission.INTERNET" />
 
   <application
-    android:label="denapk app"
+    android:label="denoapk app"
     android:icon="@mipmap/ic_launcher"
     android:usesCleartextTraffic="false"
     android:allowBackup="true"
@@ -29,7 +29,7 @@
       the page's own — NoActionBar removes it rather than sizing around it.
     -->
     <activity
-      android:name="dev.denapk.shell.MainActivity"
+      android:name="dev.denoapk.shell.MainActivity"
       android:exported="true"
       android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout|density|uiMode">
       <intent-filter>

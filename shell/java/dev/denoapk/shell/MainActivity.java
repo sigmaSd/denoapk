@@ -1,4 +1,4 @@
-package dev.denapk.shell;
+package dev.denoapk.shell;
 
 import android.app.Activity;
 import android.net.Uri;
@@ -18,7 +18,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 /**
- * The denapk shell: a WebView serving the app's bundled web assets.
+ * The denoapk shell: a WebView serving the app's bundled web assets.
  *
  * Assets are served from https://appassets.androidplatform.net rather than
  * file:// because that is a secure origin, which is what makes localStorage
@@ -27,8 +27,8 @@ import java.io.InputStream;
  *
  * Two paths are handled specially, matching what the Deno host does:
  *
- *   /__denapk/runtime.js       the fetch shim, from assets
- *   /__denapk/proxy/<url>      a request the page cannot make itself
+ *   /__denoapk/runtime.js       the fetch shim, from assets
+ *   /__denoapk/proxy/<url>      a request the page cannot make itself
  *
  * Everything else maps to assets/www/. We implement the asset mapping directly
  * instead of using androidx.webkit's WebViewAssetLoader so the shell builds
@@ -36,7 +36,7 @@ import java.io.InputStream;
  */
 public final class MainActivity extends Activity {
 
-  private static final String TAG = "denapk";
+  private static final String TAG = "denoapk";
   private static final String BASE_URL = "https://" + Router.ASSET_HOST + "/";
 
   private WebView webView;

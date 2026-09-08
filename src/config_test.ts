@@ -6,7 +6,7 @@ async function project(
   denoJson: Record<string, unknown>,
   files: Record<string, string> = { "web/index.html": "<!doctype html>" },
 ): Promise<string> {
-  const dir = await Deno.makeTempDir({ prefix: "denapk-test-" });
+  const dir = await Deno.makeTempDir({ prefix: "denoapk-test-" });
   await Deno.writeTextFile(
     join(dir, "deno.json"),
     JSON.stringify(denoJson, null, 2),

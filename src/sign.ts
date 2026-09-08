@@ -14,7 +14,7 @@ import { join } from "@std/path";
 import { exists } from "@std/fs";
 import { cacheDir, type Sdk } from "./sdk.ts";
 
-const KEY_ALIAS = "denapkdebug";
+const KEY_ALIAS = "denoapkdebug";
 const KEY_PASSWORD = "android";
 
 export function debugKeystorePath(): string {
@@ -58,7 +58,7 @@ async function ensureDebugKeystore(): Promise<string> {
     "-validity",
     "10950",
     "-dname",
-    "CN=denapk debug, OU=denapk, O=denapk, C=US",
+    "CN=denoapk debug, OU=denoapk, O=denoapk, C=US",
   ]);
   return path;
 }

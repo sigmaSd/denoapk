@@ -1,7 +1,7 @@
 /**
  * Project configuration.
  *
- * denapk adds no config of its own: everything it needs is already in a
+ * denoapk adds no config of its own: everything it needs is already in a
  * `deno desktop` project's deno.json under `desktop.app`.
  */
 
@@ -94,7 +94,7 @@ export async function loadConfig(projectDir: string): Promise<AppConfig> {
   if (!await exists(join(webDir, "index.html"))) {
     throw new Error(
       `expected ${join(webDir, "index.html")}\n` +
-        `denapk packages the static web/ directory of a deno desktop app. ` +
+        `denoapk packages the static web/ directory of a deno desktop app. ` +
         `If this project still serves its UI from Deno.serve, extract it to ` +
         `web/ first — there is no Deno runtime on the device.`,
     );
