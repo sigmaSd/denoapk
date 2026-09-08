@@ -17,7 +17,7 @@ import { basename, dirname, join, relative } from "@std/path";
 import { copy, emptyDir, exists } from "@std/fs";
 import { walk } from "@std/fs/walk";
 import type { Sdk } from "./sdk.ts";
-import type { AppConfig } from "./config.ts";
+import { type AppConfig, KNOWN_PERMISSIONS } from "./config.ts";
 import { ensureDex } from "./dex.ts";
 import { alignAndSign } from "./sign.ts";
 
@@ -46,6 +46,17 @@ function xmlEscape(s: string): string {
 }
 
 function manifestFor(app: AppConfig): string {
+  // Only permissions the project actually opted into via `android.permissions`
+  // in deno.json get declared — the shell's permission-grant code (see
+  // MainActivity.java) checks the OS-level grant state at runtime regardless,
+  // but an undeclared permission is always denied by Android before that code
+  // ever runs, so this line is what actually gates the behavior per app.
+  const extraPermissions = app.permissions
+    .map((p) => KNOWN_PERMISSIONS[p])
+    .filter((p): p is string => !!p)
+    .map((name) => `    <uses-permission android:name="${name}" />`)
+    .join("\n");
+
   return `<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="${xmlEscape(app.packageName)}"
@@ -54,6 +65,7 @@ function manifestFor(app: AppConfig): string {
 
     <uses-sdk android:minSdkVersion="${MIN_SDK}" android:targetSdkVersion="${TARGET_SDK}" />
     <uses-permission android:name="android.permission.INTERNET" />
+${extraPermissions ? extraPermissions + "\n" : ""}
 
     <application
         android:label="${xmlEscape(app.name)}"

@@ -1,12 +1,28 @@
 /**
  * Project configuration.
  *
- * denoapk adds no config of its own: everything it needs is already in a
- * `deno desktop` project's deno.json under `desktop.app`.
+ * App identity (name/icon/id) comes from `desktop.app`, which `deno desktop`
+ * already defines — nothing new needed there. Android-only concepts that
+ * `deno desktop` has no notion of (permissions, and future Android-specific
+ * settings) live under a separate top-level `android` key instead of being
+ * squeezed into `desktop.app`: that object is validated by deno desktop's own
+ * JSON Schema, which rejects unknown properties, so anything Android-specific
+ * added there would show as an editor warning. `android` is named after the
+ * platform it targets, the same way `desktop` is — not after this tool.
  */
 
 import { dirname, isAbsolute, join, resolve } from "@std/path";
 import { exists } from "@std/fs";
+
+/**
+ * Config-facing permission names to the Android manifest constants they map
+ * to. Extend this as more permissions become supported; unknown names in a
+ * project's config are warned about, not silently dropped, so a typo or a
+ * permission from a newer denoapk doesn't fail invisibly.
+ */
+export const KNOWN_PERMISSIONS: Record<string, string> = {
+  camera: "android.permission.CAMERA",
+};
 
 export interface AppConfig {
   /** Project root (the directory holding deno.json). */
@@ -21,6 +37,8 @@ export interface AppConfig {
   webDir: string;
   /** Version shown in the package manager. */
   versionName: string;
+  /** Config-facing permission names from `android.permissions`, e.g. ["camera"]. */
+  permissions: string[];
 }
 
 /** Android package names must be at least two dot-separated Java identifiers. */
@@ -100,6 +118,19 @@ export async function loadConfig(projectDir: string): Promise<AppConfig> {
     );
   }
 
+  const permissions: string[] = Array.isArray(json.android?.permissions)
+    ? json.android.permissions
+    : [];
+  for (const p of permissions) {
+    if (!(p in KNOWN_PERMISSIONS)) {
+      console.error(
+        `warning: android.permissions has unknown entry ${
+          JSON.stringify(p)
+        } — ignoring it. Known: ${Object.keys(KNOWN_PERMISSIONS).join(", ")}`,
+      );
+    }
+  }
+
   return {
     root,
     name,
@@ -107,6 +138,7 @@ export async function loadConfig(projectDir: string): Promise<AppConfig> {
     icon,
     webDir,
     versionName: json.version ?? "0.0.0",
+    permissions,
   };
 }
 

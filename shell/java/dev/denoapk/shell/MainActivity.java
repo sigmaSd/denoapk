@@ -1,12 +1,16 @@
 package dev.denoapk.shell;
 
+import android.Manifest;
 import android.app.Activity;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowInsets;
+import android.webkit.PermissionRequest;
+import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
@@ -33,13 +37,39 @@ import java.io.InputStream;
  * Everything else maps to assets/www/. We implement the asset mapping directly
  * instead of using androidx.webkit's WebViewAssetLoader so the shell builds
  * against android.jar alone, with no AAR dependencies to resolve.
+ *
+ * Camera permission (for QR-code scanning and similar) works the same way:
+ * `Activity.requestPermissions`/`checkSelfPermission`/`onRequestPermissionsResult`
+ * are plain framework APIs since API 23 — not the androidx `ActivityCompat`/
+ * `ContextCompat` wrappers, which would need an AAR dependency this shell
+ * deliberately avoids everywhere else.
+ *
+ * Whether a given app can actually be granted CAMERA is decided per app, at
+ * build time, by whether its deno.json declared `android.permissions:
+ * ["camera"]` (see src/build.ts's manifestFor()) — this shared class runs
+ * identically for every app regardless. An app that didn't opt in never
+ * declared the permission in its manifest, so `requestPermissions` below is
+ * auto-denied by the OS with no dialog shown; nothing here needs to know
+ * per-app whether camera was requested.
  */
 public final class MainActivity extends Activity {
 
   private static final String TAG = "denoapk";
   private static final String BASE_URL = "https://" + Router.ASSET_HOST + "/";
+  private static final int CAMERA_PERMISSION_REQUEST_CODE = 1001;
 
   private WebView webView;
+
+  /**
+   * The WebView's pending request while we wait for the OS permission dialog.
+   * WebView permission requests are answered asynchronously — onPermissionRequest
+   * does not have to grant/deny before returning, so we hold this and resolve it
+   * once onRequestPermissionsResult fires. Single slot, not a queue: this app
+   * only ever has one WebView with one getUserMedia() call in flight at a time,
+   * so a second concurrent request (which never happens in practice here) would
+   * simply overwrite this rather than being queued.
+   */
+  private PermissionRequest pendingPermissionRequest;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -58,6 +88,12 @@ public final class MainActivity extends Activity {
       public WebResourceResponse shouldInterceptRequest(
           WebView view, WebResourceRequest request) {
         return handle(request);
+      }
+    });
+    webView.setWebChromeClient(new WebChromeClient() {
+      @Override
+      public void onPermissionRequest(PermissionRequest request) {
+        handlePermissionRequest(request);
       }
     });
 
@@ -87,6 +123,54 @@ public final class MainActivity extends Activity {
 
     setContentView(root);
     webView.loadUrl(BASE_URL + "index.html");
+  }
+
+  /**
+   * Decide whether to grant a getUserMedia()-style request from the page.
+   * Runs on the UI thread, matching where onPermissionRequest is documented
+   * to be called and where requestPermissions() must be called from.
+   */
+  private void handlePermissionRequest(PermissionRequest request) {
+    String[] grantable = Permissions.grantable(request.getResources());
+    if (grantable.length == 0) {
+      request.deny();
+      return;
+    }
+
+    if (checkSelfPermission(Manifest.permission.CAMERA)
+        == PackageManager.PERMISSION_GRANTED) {
+      request.grant(grantable);
+      return;
+    }
+
+    // Not yet granted at the OS level: ask now and answer this request once
+    // the user responds, in onRequestPermissionsResult below. If this app's
+    // manifest never declared CAMERA (it didn't opt in via android.permissions
+    // in deno.json), the OS auto-denies this with no dialog at all — same code
+    // path either way.
+    pendingPermissionRequest = request;
+    requestPermissions(new String[] { Manifest.permission.CAMERA },
+        CAMERA_PERMISSION_REQUEST_CODE);
+  }
+
+  @Override
+  public void onRequestPermissionsResult(
+      int requestCode, String[] permissions, int[] grantResults) {
+    if (requestCode != CAMERA_PERMISSION_REQUEST_CODE) {
+      super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+      return;
+    }
+    PermissionRequest pending = pendingPermissionRequest;
+    pendingPermissionRequest = null;
+    if (pending == null) return;
+
+    boolean granted = grantResults.length > 0
+        && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+    if (granted) {
+      pending.grant(Permissions.grantable(pending.getResources()));
+    } else {
+      pending.deny();
+    }
   }
 
   /** Route a request, or return null to let the WebView handle it normally. */

@@ -90,3 +90,38 @@ Deno.test("a missing icon is a warning, not a failure", async () => {
   const app = await loadConfig(dir);
   assertEquals(app.icon, undefined);
 });
+
+Deno.test("permissions default to none", async () => {
+  const dir = await project({ desktop: { app: { name: "X" } } });
+  const app = await loadConfig(dir);
+  assertEquals(app.permissions, []);
+});
+
+Deno.test("reads permissions from the top-level android key, not desktop.app", async () => {
+  const dir = await project({
+    desktop: { app: { name: "X" } },
+    android: { permissions: ["camera"] },
+  });
+  const app = await loadConfig(dir);
+  assertEquals(app.permissions, ["camera"]);
+});
+
+Deno.test("an unknown permission warns but does not fail the build", async () => {
+  const dir = await project({
+    desktop: { app: { name: "X" } },
+    android: { permissions: ["camera", "telepathy"] },
+  });
+  // Passed through as-is — build.ts's manifestFor() is what actually filters
+  // to known permissions; loadConfig's job is just to read the list and warn.
+  const app = await loadConfig(dir);
+  assertEquals(app.permissions, ["camera", "telepathy"]);
+});
+
+Deno.test("a non-array android.permissions is treated as empty, not an error", async () => {
+  const dir = await project({
+    desktop: { app: { name: "X" } },
+    android: { permissions: "camera" },
+  });
+  const app = await loadConfig(dir);
+  assertEquals(app.permissions, []);
+});
