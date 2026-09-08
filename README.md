@@ -116,6 +116,13 @@ and it matters which one an app needs:
   native-to-page push. Both platforms expose the identical
   `denoapk.execStream()` shape; only the wire mechanism underneath differs.
 
+`denoapk.platform` (`"android"` or `"desktop"`) is there for the rarer case that
+isn't an exec/execStream-shaped gap — something with no browser equivalent at
+all to fall back on, like reading local network interfaces or bandwidth
+counters. There's no capability for those (yet); an app needing to hide UI for a
+feature it can't offer on one platform reads this instead of inventing its own
+detection.
+
 ## How it's fast
 
 The Godot approach: do the expensive work once.
