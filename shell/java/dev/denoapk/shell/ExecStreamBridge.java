@@ -44,7 +44,7 @@ final class ExecStreamBridge {
     this.webView = webView;
   }
 
-  /** Starts cmd+args (JSON: {"cmd":"/abs/path","args":[...]}), returns a stream id, or null if it couldn't start. */
+  /** Starts cmd+args (JSON: {"cmd":"ping" (or an absolute path),"args":[...]}), returns a stream id, or null if it couldn't start. */
   @JavascriptInterface
   public String start(String requestJson) {
     String cmd;
@@ -60,8 +60,11 @@ final class ExecStreamBridge {
       Log.w(TAG, "[exec-stream] bad request: " + e.getMessage());
       return null;
     }
-    if (cmd == null || !cmd.startsWith("/")) {
-      Log.w(TAG, "[exec-stream] cmd must be an absolute path");
+    // A bare name (e.g. "ping") is resolved via $PATH by ProcessBuilder
+    // itself, same as an absolute path -- see ExecClient's doc comment for
+    // why that's fine (no shell involved, so no injection risk in doing so).
+    if (cmd == null || cmd.isEmpty()) {
+      Log.w(TAG, "[exec-stream] cmd must not be empty");
       return null;
     }
 

@@ -25,13 +25,17 @@ import java.util.List;
  * proxied fetch() is actually calling.
  *
  * ProcessBuilder(List<String>) passes argv directly with no shell involved,
- * so classic shell-injection doesn't apply. `cmd` is required to be an
- * absolute path — a sanity check against PATH-search ambiguity, not a
- * security allowlist: this app deliberately runs whatever binary + args the
- * page asks for, with no allowlist. That's a real, wider trust boundary than
- * ProxyClient's (host-restricted) fetch proxy, chosen deliberately so any
- * future app can reuse this for whatever native primitive it needs without
- * denoapk maintaining a list of "known-safe" commands.
+ * so classic shell-injection doesn't apply. `cmd` can be an absolute path or
+ * a bare name (e.g. "ping") — a bare name is resolved via $PATH the same way
+ * a plain Deno.Command("ping") already was on the desktop host before this
+ * capability existed, confirmed to work the same way here (Android's own
+ * ProcessBuilder does the $PATH search too, verified on-device — this
+ * isn't a shell, so there's no injection risk in doing so, just ordinary
+ * execvp-style resolution). This app deliberately runs whatever binary +
+ * args the page asks for, with no allowlist — a real, wider trust boundary
+ * than ProxyClient's (host-restricted) fetch proxy, chosen deliberately so
+ * any future app can reuse this for whatever native primitive it needs
+ * without denoapk maintaining a list of "known-safe" commands.
  *
  * shouldInterceptRequest already runs off the UI thread, so the blocking IO
  * here is correct rather than merely tolerated (same as ProxyClient).
@@ -62,8 +66,8 @@ final class ExecClient {
       return error(400, "bad exec request: " + e.getMessage());
     }
 
-    if (cmd == null || !cmd.startsWith("/")) {
-      return error(400, "cmd must be an absolute path");
+    if (cmd == null || cmd.isEmpty()) {
+      return error(400, "cmd must not be empty");
     }
 
     List<String> argv = new ArrayList<>();

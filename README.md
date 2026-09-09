@@ -84,13 +84,18 @@ binary. `denoapk.exec`/`denoapk.execStream` (also injected by `runtime.js`)
 cover that:
 
 ```js
-const result = await denoapk.exec("/system/bin/ping", ["-c", "1", host]);
+const result = await denoapk.exec("ping", ["-c", "1", host]);
 // { ok, exitCode, stdout, stderr, timedOut }
 
-const stream = denoapk.execStream("/system/bin/ping", [host]); // no -c: runs until stopped
+const stream = denoapk.execStream("ping", [host]); // no -c: runs until stopped
 for await (const chunk of stream) { /* text as it's produced */ }
 stream.cancel(); // kills the process
 ```
+
+`cmd` can be a bare name like `"ping"` — resolved via `$PATH`, the same on both
+platforms — or an absolute path if you need a specific binary. Neither goes
+through a shell, so there's no injection risk in the `$PATH` lookup; it's the
+same resolution a plain `Deno.Command("ping")` already does.
 
 Unlike the fetch shim, this is a new API surface apps opt into explicitly —
 there's no browser-standard "run a subprocess" call to transparently patch. It
