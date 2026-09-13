@@ -1,0 +1,104 @@
+<!doctype html>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>denoapk handler example</title>
+<style>
+body {
+  font-family: system-ui;
+  max-width: 700px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+button {
+  padding: 0.5rem 1rem;
+  margin: 0.25rem;
+}
+pre {
+  background: #f5f5f5;
+  padding: 1rem;
+  overflow: auto;
+}
+</style>
+<h1>denoapk handler example</h1>
+<p>This page is served by <code>Deno.serve</code> with <code>handleDenoapkRequest</code> as middleware.
+The same <code>web/</code> bundle runs on desktop and on Android (via <code>denoapk build</code>).</p>
+
+<h2>1. Same-origin fetch (always works)</h2>
+<button id="hello">GET /api/hello</button>
+<pre id="out-hello">(click)</pre>
+
+<h2>2. Cross-origin fetch with Cookie (needs proxy shim)</h2>
+<p><code>runtime.js</code> rewrites this to <code>/__denoapk/proxy/&lt;encoded-url&gt;</code> with
+<code>x-denoapk-h-cookie</code> so the WebView can send forbidden headers. Host restores them.</p>
+<button id="proxy">GET https://httpbin.org/anything (with Cookie)</button>
+<pre id="out-proxy">(click)</pre>
+
+<h2>3. denoapk.exec (opt-in)</h2>
+<button id="exec">denoapk.exec("echo", ["hi"])</button>
+<pre id="out-exec">(click)</pre>
+
+<h2>4. denoapk.execStream (streaming)</h2>
+<button
+  id="stream">denoapk.execStream("sh", ["-c", "for i in 1 2 3; do echo hi-$i; sleep 0.3; done"])</button>
+<button id="stream-cancel">cancel</button>
+<pre id="out-stream">(click)</pre>
+
+<p>Platform: <code id="platform"></code></p>
+
+<script src="/__denoapk/runtime.js"></script>
+<script type="module">
+document.getElementById("platform").textContent =
+  globalThis.denoapk?.platform ?? "unknown";
+
+document.getElementById("hello").onclick = async () => {
+  const r = await fetch("/api/hello");
+  document.getElementById("out-hello").textContent = await r.text();
+};
+
+document.getElementById("proxy").onclick = async () => {
+  // Cross-origin: will be rewritten to /__denoapk/proxy/... by runtime.js
+  // Works on both Deno host and Android WebView host.
+  try {
+    const r = await fetch("https://httpbin.org/anything", {
+      headers: { Cookie: "demo=1", "X-Custom": "from-web" },
+    });
+    document.getElementById("out-proxy").textContent = JSON.stringify(
+      await r.json(),
+      null,
+      2,
+    );
+  } catch (e) {
+    document.getElementById("out-proxy").textContent = "error: " + e;
+  }
+};
+
+document.getElementById("exec").onclick = async () => {
+  const res = await denoapk.exec("echo", ["hi from exec"]);
+  document.getElementById("out-exec").textContent = JSON.stringify(
+    res,
+    null,
+    2,
+  );
+};
+
+let currentStream = null;
+document.getElementById("stream").onclick = async () => {
+  const out = document.getElementById("out-stream");
+  out.textContent = "";
+  currentStream = denoapk.execStream("sh", [
+    "-c",
+    "for i in 1 2 3; do echo hi-$i; sleep 0.3; done",
+  ]);
+  try {
+    for await (const chunk of currentStream) {
+      out.textContent += chunk;
+    }
+    out.textContent += "\n[done]";
+  } catch (e) {
+    out.textContent += "\n[error " + e + "]";
+  }
+};
+document.getElementById("stream-cancel").onclick = () => {
+  currentStream?.cancel();
+};
+</script>

@@ -68,9 +68,31 @@ code, where neither restriction applies. The shim runs _before_ `fetch`, while
 `init.headers` is still a plain object, so the forbidden names are still intact
 at that point.
 
-App code is unaffected — it writes ordinary `fetch` with ordinary headers. Host
-this same file from your Deno side (see cuse's `report.ts`) and the same web
-bundle runs in both places.
+App code is unaffected — it writes ordinary `fetch` with ordinary headers. The
+same web bundle runs in both places.
+
+On the Deno side you no longer need to handle the proxy by hand. Import the
+helper and let it auto-handle all `__denoapk/*` routes:
+
+```ts
+// main.ts
+import { handleDenoapkRequest } from "jsr:@sigmasd/denoapk/handler";
+
+Deno.serve(async (req) => {
+  const denoapkRes = await handleDenoapkRequest(req, {
+    exec: { enabled: true },
+  });
+  if (denoapkRes) return denoapkRes; // runtime.js, proxy, exec, exec-stream
+
+  // your app routing here
+  return new Response("hello");
+});
+```
+
+`handleDenoapkRequest` strictly handles `__denoapk/*` (no `web/` serving
+opinion) and returns `null` otherwise. `exec` is opt-in — disabled by default
+for the wider trust boundary (no allowlist). See `examples/handler` for a
+runnable desktop + APK example.
 
 Currently GET-only: `WebResourceRequest` exposes request headers but not a POST
 body. Adding POST means an `addJavascriptInterface` transport behind the same
@@ -166,7 +188,8 @@ for distribution. Release signing is not implemented yet.
 ## Layout
 
 ```
-src/     cli, config, sdk bootstrap, dex cache, packaging, signing
-shell/   the Android shell (Java, android.jar only — no AARs)
-runtime/ runtime.js, the fetch shim shared with the Deno host
+src/      cli, config, sdk bootstrap, dex cache, packaging, signing, handler (Deno host helper)
+shell/    the Android shell (Java, android.jar only — no AARs)
+runtime/  runtime.js, the fetch shim shared with the Deno host
+examples/handler  minimal desktop + APK example using handleDenoapkRequest
 ```
