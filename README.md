@@ -105,7 +105,7 @@ header/CORS problem `fetch` can be shimmed around, but running an actual system
 binary. `denoapk.exec`/`denoapk.execStream` (also injected by `runtime.js`)
 cover that:
 
-```js
+```js ignore
 const result = await denoapk.exec("ping", ["-c", "1", host]);
 // { ok, exitCode, stdout, stderr, timedOut }
 

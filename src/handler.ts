@@ -1,23 +1,27 @@
 /**
+ * @module handler
  * Deno host helper for denoapk — auto-handles `__denoapk/*` requests
  * so app code doesn't have to.
  *
- * Mirrors what the Android shell does in:
- *   Router.java     — routing
- *   ProxyClient.java — proxy allowlist + header prefix + hop-by-hop filtering
- *   ExecClient.java  — exec timeout + JSON shape
+ * Mirrors what the Android shell does in `Router.java` / `ProxyClient.java` /
+ * `ExecClient.java`. Handles:
+ * - `GET /__denoapk/runtime.js` — the fetch shim (`runtime/runtime.js`)
+ * - `GET /__denoapk/proxy/<encoded-url>` — CORS + forbidden headers bypass
+ * - `GET /__denoapk/exec/<json>` / `exec-stream` — subprocess (opt-in)
  *
- * Usage:
- *   import { handleDenoapkRequest } from "jsr:@sigmasd/denoapk/handler";
- *   Deno.serve(async (req) => {
- *     const r = await handleDenoapkRequest(req, { exec: { enabled: true } });
- *     if (r) return r;
- *     return new Response("app");
- *   });
+ * Only `__denoapk/*` is handled — returns `null` otherwise so your app
+ * routing runs. `exec` is opt-in (disabled by default) for the wider trust
+ * boundary (no allowlist, like `ExecClient.java`).
  *
- * Only `__denoapk/*` is handled — strict Option A, no static `web/` serving.
- * `exec` is opt-in (disabled by default) to keep the wider trust boundary
- * explicit (see ExecClient.java's no-allowlist note).
+ * @example
+ * ```ts
+ * import { handleDenoapkRequest } from "jsr:@sigmasd/denoapk/handler";
+ * Deno.serve(async (req) => {
+ *   const r = await handleDenoapkRequest(req, { exec: { enabled: true } });
+ *   if (r) return r;
+ *   return new Response("hello");
+ * });
+ * ```
  */
 
 const RUNTIME_PATH = "/__denoapk/runtime.js";
@@ -30,7 +34,11 @@ const DEFAULT_TIMEOUT_MS = 10_000;
 const MAX_TIMEOUT_MS = 60_000;
 const PROXY_TIMEOUT_MS = 30_000;
 
+/**
+ * Options for {@linkcode handleDenoapkRequest}.
+ */
 export interface HandleOptions {
+  /** Enable `exec` / `exec-stream` — disabled by default (no allowlist, like `ExecClient.java`). */
   exec?: { enabled?: boolean };
 }
 
@@ -63,6 +71,10 @@ function loadRuntimeJs(): Promise<string> {
   return runtimeCachePromise;
 }
 
+/**
+ * Whether `host` is a private IPv4 literal (10/8, 172.16/12, 192.168/16, 127/8, 169.254/16).
+ * Mirrors `NetworkTargets.isPrivateIPv4Literal` — literal check only, no DNS.
+ */
 export function isPrivateIPv4Literal(host: string): boolean {
   const parts = host.split(".", -1);
   if (parts.length !== 4) return false;
@@ -82,6 +94,10 @@ export function isPrivateIPv4Literal(host: string): boolean {
   return false;
 }
 
+/**
+ * Whether a proxy target `protocol://host` is allowed.
+ * `https` always, `http` only to a private IPv4 literal — mirrors `NetworkTargets.isAllowed`.
+ */
 export function isAllowed(protocol: string, host: string): boolean {
   if (protocol === "https") return true;
   if (protocol === "http") return isPrivateIPv4Literal(host);
