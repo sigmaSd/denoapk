@@ -155,6 +155,47 @@ async function checkReferences(webDir: string) {
   }
 }
 
+const RUNTIME_SCRIPT = "/__denoapk/runtime.js";
+
+/**
+ * Ensure the staged index.html loads the runtime shim, inserting the
+ * script tag when the app didn't include one. The shim must run before
+ * any app script (it patches fetch), so the tag goes immediately after
+ * `<head>` — or at the top of the document when there is no head.
+ * Returns true when it injected, false when the tag was already there
+ * (any query string counts). Operates on the staged copy only, never the
+ * app's source; desktop needs no equivalent since it serves source files,
+ * where the tag stays explicit.
+ */
+export function ensureRuntimeShim(html: string): {
+  html: string;
+  injected: boolean;
+} {
+  if (html.includes(RUNTIME_SCRIPT)) return { html, injected: false };
+  const tag =
+    `<!-- injected by denoapk -->\n    <script src="${RUNTIME_SCRIPT}"></script>`;
+  const headOpen = html.match(/<head\b[^>]*>/i);
+  if (headOpen?.index !== undefined) {
+    const insertAt = headOpen.index + headOpen[0].length;
+    return {
+      html: html.slice(0, insertAt) + "\n" + tag + html.slice(insertAt),
+      injected: true,
+    };
+  }
+  return { html: tag + "\n" + html, injected: true };
+}
+
+/** Insert the shim tag into the staged index.html unless already present. */
+async function ensureShimTag(stagedIndex: string): Promise<void> {
+  const staged = await Deno.readTextFile(stagedIndex);
+  const { html, injected } = ensureRuntimeShim(staged);
+  if (!injected) return;
+  await Deno.writeTextFile(stagedIndex, html);
+  console.error(
+    "  note: index.html did not load /__denoapk/runtime.js; injected the script tag",
+  );
+}
+
 export interface BuildOptions {
   sdk: Sdk;
   app: AppConfig;
@@ -220,6 +261,7 @@ export async function buildApk(opts: BuildOptions): Promise<string> {
       join(denoapkDir, "runtime", "runtime.js"),
       join(assets, "runtime.js"),
     );
+    await ensureShimTag(join(assets, "www", "index.html"));
 
     // `zip -X` keeps out extra fields that would fight zipalign.
     await run(

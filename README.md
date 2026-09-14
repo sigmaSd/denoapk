@@ -42,6 +42,12 @@ adb install -r dist/hello.apk
 That's the whole workflow. `desktop.app.icons.linux` becomes the launcher icon
 if set, and `version` becomes `versionName` — both optional.
 
+APK builds also inject `<script src="/__denoapk/runtime.js"></script>` into the
+staged `web/index.html` when the app does not already include it. The injection
+happens only in the APK copy: desktop apps still serve their source files
+directly, so a shared app should keep the tag in its source for desktop
+development and packaging. Existing tags are left untouched.
+
 [sigmaSd/aiuse](https://github.com/sigmaSd/aiuse) is a real app built this way:
 `report.ts` and `web/` show the shared `web/` layout, `runtime.js` hosted from
 the Deno side (below), and `desktop.app` driving both the desktop and Android
