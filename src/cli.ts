@@ -8,7 +8,7 @@
  * web/ directory can ship to a phone.
  *
  * Usage:
- *   denoapk build [projectDir] [-o out.apk]
+ *   denoapk build [projectDir] [-o out.apk] [--web-dir dir]
  *   denoapk doctor
  */
 
@@ -24,7 +24,7 @@ function usage(): never {
   console.error(`denoapk — package a deno desktop app as an Android APK
 
 Usage:
-  denoapk build [projectDir] [-o <out.apk>]   build an APK (default: .)
+  denoapk build [projectDir] [-o <out.apk>] [--web-dir <dir>]   build an APK (default: .)
   denoapk doctor                              show toolchain status
 
 Configuration comes from the project's deno.json \`desktop.app\` block:
@@ -32,16 +32,20 @@ Configuration comes from the project's deno.json \`desktop.app\` block:
   identifier  -> Android package name
   icons.linux -> launcher icon
 
-The project's web/ directory is bundled as the app's assets. Backend code is
+The project's web/ directory is bundled as the app's assets (--web-dir
+overrides the location, relative to the project dir). Backend code is
 not packaged — there is no Deno runtime on the device.`);
   Deno.exit(1);
 }
 
 async function cmdBuild(args: string[]) {
-  const flags = parseArgs(args, { string: ["output"], alias: { o: "output" } });
+  const flags = parseArgs(args, {
+    string: ["output", "web-dir"],
+    alias: { o: "output" },
+  });
   const projectDir = resolve(String(flags._[0] ?? "."));
 
-  const app = await loadConfig(projectDir);
+  const app = await loadConfig(projectDir, { webDir: flags["web-dir"] });
   const output = flags.output
     ? resolve(flags.output)
     : join(app.root, "dist", `${app.packageName.split(".").pop()}.apk`);

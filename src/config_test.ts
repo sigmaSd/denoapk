@@ -87,6 +87,31 @@ Deno.test("explains itself when there is no web/ directory", async () => {
   assertStringIncludes(err.message, "no Deno runtime on the device");
 });
 
+Deno.test("a custom --web-dir is accepted when it holds the assets", async () => {
+  const dir = await project({ desktop: { app: { name: "X" } } }, {
+    "src/web/index.html": "<!doctype html>",
+  });
+  const app = await loadConfig(dir, { webDir: "src/web" });
+  assertEquals(app.webDir, join(dir, "src/web"));
+});
+
+Deno.test("an absolute --web-dir works too", async () => {
+  const dir = await project({ desktop: { app: { name: "X" } } }, {
+    "src/web/index.html": "<!doctype html>",
+  });
+  const app = await loadConfig(dir, { webDir: join(dir, "src/web") });
+  assertEquals(app.webDir, join(dir, "src/web"));
+});
+
+Deno.test("a missing custom --web-dir names the expected index.html", async () => {
+  const dir = await project({ desktop: { app: { name: "X" } } });
+  const err = await assertRejects(
+    () => loadConfig(dir, { webDir: "src/web" }),
+    Error,
+  );
+  assertStringIncludes(err.message, join("src", "web", "index.html"));
+});
+
 Deno.test("a missing icon is a warning, not a failure", async () => {
   const dir = await project({
     desktop: { app: { name: "X", icons: { linux: "./nope.png" } } },

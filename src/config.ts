@@ -75,7 +75,10 @@ function slug(name: string): string {
   return /^[a-z]/.test(s) ? s : "app" + s;
 }
 
-export async function loadConfig(projectDir: string): Promise<AppConfig> {
+export async function loadConfig(
+  projectDir: string,
+  opts?: { webDir?: string },
+): Promise<AppConfig> {
   const root = resolve(projectDir);
   const configPath = join(root, "deno.json");
   const jsoncPath = join(root, "deno.jsonc");
@@ -124,13 +127,18 @@ export async function loadConfig(projectDir: string): Promise<AppConfig> {
     else console.error(`warning: icon ${abs} not found, using the default`);
   }
 
-  const webDir = join(root, "web");
+  // Most deno desktop apps keep static assets in ./web, but the layout is
+  // only a convention — accept an explicit directory for the rest.
+  const webDir = opts?.webDir
+    ? (isAbsolute(opts.webDir) ? opts.webDir : join(root, opts.webDir))
+    : join(root, "web");
   if (!await exists(join(webDir, "index.html"))) {
     throw new Error(
       `expected ${join(webDir, "index.html")}\n` +
-        `denoapk packages the static web/ directory of a deno desktop app. ` +
+        `denoapk packages the static web assets of a deno desktop app (./web ` +
+        `by convention, or --web-dir <dir>). ` +
         `If this project still serves its UI from Deno.serve, extract it to ` +
-        `web/ first — there is no Deno runtime on the device.`,
+        `a static directory first — there is no Deno runtime on the device.`,
     );
   }
 
