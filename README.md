@@ -38,6 +38,7 @@ directory. That's also all denoapk needs — nothing extra to add.
 denoapk build .        # -> dist/hello.apk
 adb install -r dist/hello.apk
 ```
+
 Non-standard layouts pass `--web-dir <dir>` (relative to the project dir)
 instead of the default `web/`.
 
