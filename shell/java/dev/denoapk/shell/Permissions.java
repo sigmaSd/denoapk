@@ -9,27 +9,40 @@ import android.webkit.PermissionRequest;
  * MainActivity needs a device, but which resources we're willing to grant at
  * all does not.
  *
- * `PermissionRequest.RESOURCE_VIDEO_CAPTURE` is a plain `static final String`
- * constant, not a method — referencing it works under a stub android.jar on a
- * plain JVM the same way any other constant would, even though most of
- * PermissionRequest's actual methods would throw if called there.
+ * `PermissionRequest.RESOURCE_VIDEO_CAPTURE` and `RESOURCE_AUDIO_CAPTURE` are
+ * plain `static final String` constants, not methods — referencing them works
+ * under a stub android.jar on a plain JVM the same way any other constant
+ * would, even though most of PermissionRequest's actual methods would throw
+ * if called there.
  */
 public final class Permissions {
 
   private Permissions() {}
 
+  /** WebView resources this shell is willing to grant at all. */
+  public static boolean isGrantable(String resource) {
+    return PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(resource)
+        || PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(resource);
+  }
+
   /**
    * Resources this shell is willing to grant, filtered from what a page
-   * actually asked for. We only ever request camera at the OS level, so
-   * anything else (audio capture, protected media) is dropped even if a page
-   * asks for it — never grant more than the app declared it needs.
+   * actually asked for, in the order requested. Whether the OS-level
+   * permission behind each one (CAMERA for video, RECORD_AUDIO for audio) is
+   * currently granted is checked by MainActivity — an undeclared permission
+   * is always denied by Android before that code ever runs, so per-app
+   * gating still comes from the manifest, not from here.
    */
   public static String[] grantable(String[] requested) {
+    int count = 0;
     for (String r : requested) {
-      if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(r)) {
-        return new String[] { PermissionRequest.RESOURCE_VIDEO_CAPTURE };
-      }
+      if (isGrantable(r)) count++;
     }
-    return new String[0];
+    String[] out = new String[count];
+    int i = 0;
+    for (String r : requested) {
+      if (isGrantable(r)) out[i++] = r;
+    }
+    return out;
   }
 }

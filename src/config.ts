@@ -22,6 +22,7 @@ import { exists } from "@std/fs";
  */
 export const KNOWN_PERMISSIONS: Record<string, string> = {
   camera: "android.permission.CAMERA",
+  microphone: "android.permission.RECORD_AUDIO",
 };
 
 /**
@@ -53,7 +54,7 @@ export interface AppConfig {
   webDir: string;
   /** Version shown in the package manager. */
   versionName: string;
-  /** Config-facing permission names from `android.permissions`, e.g. ["camera"]. */
+  /** Config-facing permission names from `android.permissions`, e.g. ["camera", "microphone"]. */
   permissions: string[];
 }
 

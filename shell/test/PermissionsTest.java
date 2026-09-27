@@ -17,9 +17,21 @@ public final class PermissionsTest {
     );
 
     eq(
-        new String[0],
+        new String[] { PermissionRequest.RESOURCE_AUDIO_CAPTURE },
         Permissions.grantable(new String[] { PermissionRequest.RESOURCE_AUDIO_CAPTURE }),
-        "never grants audio — we only ever ask the OS for camera"
+        "grants a bare audio-capture request"
+    );
+
+    eq(
+        new String[] {
+            PermissionRequest.RESOURCE_AUDIO_CAPTURE,
+            PermissionRequest.RESOURCE_VIDEO_CAPTURE,
+        },
+        Permissions.grantable(new String[] {
+            PermissionRequest.RESOURCE_AUDIO_CAPTURE,
+            PermissionRequest.RESOURCE_VIDEO_CAPTURE,
+        }),
+        "grants a mixed request in full, in the order requested"
     );
 
     eq(
@@ -31,10 +43,10 @@ public final class PermissionsTest {
     eq(
         new String[] { PermissionRequest.RESOURCE_VIDEO_CAPTURE },
         Permissions.grantable(new String[] {
-            PermissionRequest.RESOURCE_AUDIO_CAPTURE,
+            "android.webkit.resource.PROTECTED_MEDIA_ID",
             PermissionRequest.RESOURCE_VIDEO_CAPTURE,
         }),
-        "grants only video out of a mixed request, never audio alongside it"
+        "drops ungrantable resources but keeps the grantable ones, in order"
     );
 
     if (failures > 0) {
