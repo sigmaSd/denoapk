@@ -46,26 +46,25 @@ import java.io.InputStream;
  * addJavascriptInterface object that pushes each chunk to the page directly
  * via evaluateJavascript() rather than the page pulling via fetch().
  *
- * Camera and microphone permission (for QR-code scanning, audio monitoring
- * and similar) works the same way:
+ * Camera permission (for QR-code scanning and similar) works the same way:
  * `Activity.requestPermissions`/`checkSelfPermission`/`onRequestPermissionsResult`
  * are plain framework APIs since API 23 — not the androidx `ActivityCompat`/
  * `ContextCompat` wrappers, which would need an AAR dependency this shell
  * deliberately avoids everywhere else.
  *
- * Whether a given app can actually be granted CAMERA or RECORD_AUDIO is
- * decided per app, at build time, by whether its deno.json declared
- * `android.permissions: ["camera", "microphone"]` (see src/build.ts's
- * manifestFor()) — this shared class runs identically for every app
- * regardless. An app that didn't opt in never declared the permission in its
- * manifest, so `requestPermissions` below is auto-denied by the OS with no
- * dialog shown; nothing here needs to know per-app what was requested.
+ * Whether a given app can actually be granted CAMERA is decided per app, at
+ * build time, by whether its deno.json declared `android.permissions:
+ * ["camera"]` (see src/build.ts's manifestFor()) — this shared class runs
+ * identically for every app regardless. An app that didn't opt in never
+ * declared the permission in its manifest, so `requestPermissions` below is
+ * auto-denied by the OS with no dialog shown; nothing here needs to know
+ * per-app whether camera was requested.
  */
 public final class MainActivity extends Activity {
 
   private static final String TAG = "denoapk";
   private static final String BASE_URL = "https://" + Router.ASSET_HOST + "/";
-  private static final int MEDIA_PERMISSION_REQUEST_CODE = 1001;
+  private static final int CAMERA_PERMISSION_REQUEST_CODE = 1001;
 
   private WebView webView;
 
@@ -162,13 +161,6 @@ public final class MainActivity extends Activity {
    * Decide whether to grant a getUserMedia()-style request from the page.
    * Runs on the UI thread, matching where onPermissionRequest is documented
    * to be called and where requestPermissions() must be called from.
-   *
-   * Each WebView resource maps to one OS permission (video capture needs
-   * CAMERA, audio capture needs RECORD_AUDIO). Only the missing ones are
-   * requested; resources whose OS permission is already granted are granted
-   * immediately. If the app's manifest never declared one (it didn't opt in
-   * via android.permissions in deno.json), the OS auto-denies it with no
-   * dialog at all — same code path either way.
    */
   private void handlePermissionRequest(PermissionRequest request) {
     String[] grantable = Permissions.grantable(request.getResources());
@@ -177,90 +169,26 @@ public final class MainActivity extends Activity {
       return;
     }
 
-    String[] needed = osPermissionsFor(grantable);
-    String[] missing = missingPermissions(needed);
-    if (missing.length == 0) {
+    if (checkSelfPermission(Manifest.permission.CAMERA)
+        == PackageManager.PERMISSION_GRANTED) {
       request.grant(grantable);
       return;
     }
 
     // Not yet granted at the OS level: ask now and answer this request once
-    // the user responds, in onRequestPermissionsResult below.
+    // the user responds, in onRequestPermissionsResult below. If this app's
+    // manifest never declared CAMERA (it didn't opt in via android.permissions
+    // in deno.json), the OS auto-denies this with no dialog at all — same code
+    // path either way.
     pendingPermissionRequest = request;
-    requestPermissions(missing, MEDIA_PERMISSION_REQUEST_CODE);
-  }
-
-  /** OS permissions backing the given WebView resources, deduplicated. */
-  private static String[] osPermissionsFor(String[] resources) {
-    boolean wantCamera = false;
-    boolean wantMic = false;
-    for (String r : resources) {
-      if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(r)) wantCamera = true;
-      if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(r)) wantMic = true;
-    }
-    if (wantCamera && wantMic) {
-      return new String[] { Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO };
-    } else if (wantCamera) {
-      return new String[] { Manifest.permission.CAMERA };
-    } else {
-      return new String[] { Manifest.permission.RECORD_AUDIO };
-    }
-  }
-
-  /** Subset of the given OS permissions the user has not granted yet. */
-  private String[] missingPermissions(String[] permissions) {
-    int count = 0;
-    for (String p : permissions) {
-      if (checkSelfPermission(p) != PackageManager.PERMISSION_GRANTED) count++;
-    }
-    String[] out = new String[count];
-    int i = 0;
-    for (String p : permissions) {
-      if (checkSelfPermission(p) != PackageManager.PERMISSION_GRANTED) out[i++] = p;
-    }
-    return out;
-  }
-
-  /**
-   * WebView resources whose OS permission was granted, in the order the page
-   * requested them. A partial grant (mic allowed, camera denied) grants only
-   * the allowed half rather than denying the whole request.
-   */
-  private static String[] grantedResources(String[] requested, String[] permissions, int[] grantResults) {
-    boolean cameraOk = wasGranted(Manifest.permission.CAMERA, permissions, grantResults);
-    boolean micOk = wasGranted(Manifest.permission.RECORD_AUDIO, permissions, grantResults);
-    int count = 0;
-    for (String r : requested) {
-      if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(r) && cameraOk) count++;
-      if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(r) && micOk) count++;
-    }
-    String[] out = new String[count];
-    int i = 0;
-    for (String r : requested) {
-      if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(r) && cameraOk) out[i++] = r;
-      if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(r) && micOk) out[i++] = r;
-    }
-    return out;
-  }
-
-  /**
-   * Whether an OS permission ended up granted. Permissions that were already
-   * granted were never re-requested, so absence from the result arrays means
-   * granted — only an explicit denial in grantResults blocks its resource.
-   */
-  private static boolean wasGranted(String permission, String[] permissions, int[] grantResults) {
-    for (int i = 0; i < permissions.length; i++) {
-      if (permission.equals(permissions[i])) {
-        return grantResults[i] == PackageManager.PERMISSION_GRANTED;
-      }
-    }
-    return true;
+    requestPermissions(new String[] { Manifest.permission.CAMERA },
+        CAMERA_PERMISSION_REQUEST_CODE);
   }
 
   @Override
   public void onRequestPermissionsResult(
       int requestCode, String[] permissions, int[] grantResults) {
-    if (requestCode != MEDIA_PERMISSION_REQUEST_CODE) {
+    if (requestCode != CAMERA_PERMISSION_REQUEST_CODE) {
       super.onRequestPermissionsResult(requestCode, permissions, grantResults);
       return;
     }
@@ -268,10 +196,10 @@ public final class MainActivity extends Activity {
     pendingPermissionRequest = null;
     if (pending == null) return;
 
-    String[] granted = grantedResources(
-        Permissions.grantable(pending.getResources()), permissions, grantResults);
-    if (granted.length > 0) {
-      pending.grant(granted);
+    boolean granted = grantResults.length > 0
+        && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+    if (granted) {
+      pending.grant(Permissions.grantable(pending.getResources()));
     } else {
       pending.deny();
     }

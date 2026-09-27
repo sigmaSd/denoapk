@@ -89,7 +89,6 @@ ${extraPermissions ? extraPermissions + "\n" : ""}
         <activity
             android:name="dev.denoapk.shell.MainActivity"
             android:exported="true"
-            android:screenOrientation="portrait"
             android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout|density|uiMode">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
