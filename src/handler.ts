@@ -130,6 +130,26 @@ function statusText(status: number): string {
   }
 }
 
+// Proxy fetches go through a client we own so a dead connection pool can be
+// thrown away. After a system suspend (or a network change) pooled HTTP/2
+// connections are silently dead but still look open, so every request rides
+// them and fails until the process restarts. Dropping the client on any
+// failure forces fresh connections on the next request.
+let proxyClient: Deno.HttpClient | null = null;
+
+function getProxyClient(): Deno.HttpClient {
+  return proxyClient ??= Deno.createHttpClient({});
+}
+
+function resetProxyClient(): void {
+  try {
+    proxyClient?.close();
+  } catch {
+    void 0;
+  }
+  proxyClient = null;
+}
+
 // Hop-by-hop / already-decoded headers that must not be forwarded
 // (mirrors ProxyClient.java filtering)
 function shouldForwardResponseHeader(name: string): boolean {
@@ -198,11 +218,13 @@ async function handleProxy(req: Request): Promise<Response> {
         body,
         redirect: "follow",
         signal: controller.signal,
+        client: getProxyClient(),
       });
     } finally {
       clearTimeout(timeout);
     }
   } catch (e) {
+    resetProxyClient();
     const msg = e instanceof Error ? e.message : String(e);
     if (msg.includes("abort")) {
       return errorResponse(502, "proxy request timed out");
