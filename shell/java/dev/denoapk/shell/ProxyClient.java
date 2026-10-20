@@ -98,8 +98,12 @@ final class ProxyClient {
         if (lower.equals("content-encoding") || lower.equals("content-length")) continue;
         if (lower.startsWith("access-control-")) continue;
         if (lower.equals("transfer-encoding") || lower.equals("connection")) continue;
+        // Re-sent below in a form the page can actually read.
+        if (SetCookies.isSetCookie(name)) continue;
         headers.put(name, e.getValue().get(0));
       }
+      String setCookies = SetCookies.headerValue(conn.getHeaderFields());
+      if (setCookies != null) headers.put(SetCookies.HEADER, setCookies);
 
       String reason = conn.getResponseMessage();
       // WebResourceResponse rejects a null or empty reason phrase.

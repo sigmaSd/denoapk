@@ -29,6 +29,8 @@ const PROXY_PREFIX = "/__denoapk/proxy/";
 const EXEC_PREFIX = "/__denoapk/exec/";
 const EXEC_STREAM_PREFIX = "/__denoapk/exec-stream/";
 const HEADER_PREFIX = "x-denoapk-h-";
+/** Mirrors `SetCookies.HEADER` in the Android shell. */
+const SET_COOKIE_HEADER = "x-denoapk-set-cookie";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 const MAX_TIMEOUT_MS = 60_000;
@@ -157,7 +159,23 @@ function shouldForwardResponseHeader(name: string): boolean {
   if (lower === "content-encoding" || lower === "content-length") return false;
   if (lower.startsWith("access-control-")) return false;
   if (lower === "transfer-encoding" || lower === "connection") return false;
+  // Re-sent as SET_COOKIE_HEADER; see encodeSetCookies.
+  if (lower === "set-cookie") return false;
   return true;
+}
+
+/**
+ * A webview hides Set-Cookie from fetch(), so the target's Set-Cookie lines
+ * travel as one JSON array under `x-denoapk-set-cookie`, which runtime.js
+ * exposes as `Headers.getSetCookie()`. JSON rather than a joined list because
+ * Expires dates contain commas; non-ASCII is escaped so it is always a legal
+ * header value. Mirrors `SetCookies.java`.
+ */
+function encodeSetCookies(cookies: string[]): string {
+  return JSON.stringify(cookies).replace(
+    /[\u007f-\uffff]/g,
+    (c) => "\\u" + c.charCodeAt(0).toString(16).padStart(4, "0"),
+  );
 }
 
 async function handleProxy(req: Request): Promise<Response> {
@@ -236,6 +254,10 @@ async function handleProxy(req: Request): Promise<Response> {
   for (const [k, v] of proxied.headers) {
     if (!shouldForwardResponseHeader(k)) continue;
     headers.set(k, v);
+  }
+  const cookies = proxied.headers.getSetCookie();
+  if (cookies.length > 0) {
+    headers.set(SET_COOKIE_HEADER, encodeSetCookies(cookies));
   }
 
   // Don't set content-length; let Deno chunk it

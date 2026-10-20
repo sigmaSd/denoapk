@@ -469,3 +469,110 @@ Deno.test("e2e: Deno.serve integration with handleDenoapkRequest", async () => {
     await target.shutdown();
   }
 });
+
+Deno.test("handleDenoapkRequest: proxy re-sends Set-Cookie as a readable JSON header", async () => {
+  const target = await echoServer(() => {
+    const headers = new Headers({ "content-type": "text/plain" });
+    headers.append(
+      "set-cookie",
+      "a=1; Path=/; Expires=Wed, 21 Oct 2026 07:28:00 GMT; HttpOnly",
+    );
+    headers.append("set-cookie", "b=2; Max-Age=0");
+    return new Response("ok", { headers });
+  });
+
+  try {
+    const encoded = encodeURIComponent(`${target.base}/`);
+    const r = await handleDenoapkRequest(
+      new Request(`http://localhost/__denoapk/proxy/${encoded}`),
+    );
+    assertEquals(r?.status, 200);
+    await r!.body?.cancel();
+    // Raw Set-Cookie would only land in the webview's jar for the app origin.
+    assertEquals(r!.headers.getSetCookie(), []);
+    assertEquals(JSON.parse(r!.headers.get("x-denoapk-set-cookie")!), [
+      "a=1; Path=/; Expires=Wed, 21 Oct 2026 07:28:00 GMT; HttpOnly",
+      "b=2; Max-Age=0",
+    ]);
+  } finally {
+    await target.shutdown();
+  }
+});
+
+Deno.test("handleDenoapkRequest: proxy omits the Set-Cookie header when none are set", async () => {
+  const target = await echoServer(() => new Response("ok"));
+  try {
+    const encoded = encodeURIComponent(`${target.base}/`);
+    const r = await handleDenoapkRequest(
+      new Request(`http://localhost/__denoapk/proxy/${encoded}`),
+    );
+    await r!.body?.cancel();
+    assertEquals(r!.headers.has("x-denoapk-set-cookie"), false);
+  } finally {
+    await target.shutdown();
+  }
+});
+
+/**
+ * Runs runtime.js against a fake page: `globalThis` and `location` are
+ * shadowed so the shim patches `page.fetch` instead of the test's own.
+ */
+async function loadRuntime(
+  pageFetch: (input: string, init?: RequestInit) => Promise<Response>,
+): Promise<{ fetch: typeof fetch }> {
+  const r = await handleDenoapkRequest(
+    new Request("http://localhost/__denoapk/runtime.js"),
+  );
+  const src = await r!.text();
+  const page = { fetch: pageFetch } as unknown as { fetch: typeof fetch };
+  new Function("globalThis", "location", src)(page, {
+    href: "http://app.local/",
+    origin: "http://app.local",
+  });
+  return page;
+}
+
+Deno.test("runtime.js: proxied responses expose Set-Cookie via getSetCookie()", async () => {
+  const cookies = ["a=1; Expires=Wed, 21 Oct 2026 07:28:00 GMT", 'q="é"'];
+  // Exactly what the host sends, so the encoder and the shim are tested together.
+  const target = await echoServer(() => {
+    const headers = new Headers();
+    for (const c of cookies) headers.append("set-cookie", c);
+    return new Response("ok", { headers });
+  });
+  try {
+    const page = await loadRuntime(async (input, init) => {
+      const r = await handleDenoapkRequest(
+        new Request(new URL(input, "http://localhost/"), init),
+      );
+      return r!;
+    });
+    const res = await page.fetch(`${target.base}/`);
+    await res.body?.cancel();
+    assertEquals(res.headers.getSetCookie(), cookies);
+  } finally {
+    await target.shutdown();
+  }
+});
+
+Deno.test("runtime.js: getSetCookie() is empty without the header or when it is malformed", async () => {
+  for (const header of [undefined, "not json", '{"a":1}']) {
+    const page = await loadRuntime(() =>
+      Promise.resolve(
+        new Response("ok", {
+          headers: header ? { "x-denoapk-set-cookie": header } : {},
+        }),
+      )
+    );
+    const res = await page.fetch("https://example.com/");
+    assertEquals(res.headers.getSetCookie(), [], `header: ${header}`);
+  }
+});
+
+Deno.test("runtime.js: same-origin responses are left untouched", async () => {
+  const original = new Response("ok");
+  const page = await loadRuntime(() => Promise.resolve(original));
+  const res = await page.fetch("/api/tokens");
+  assertEquals(res, original);
+  assertEquals(Object.hasOwn(res.headers, "getSetCookie"), false);
+});

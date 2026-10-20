@@ -30,16 +30,25 @@ try {
       join(root, "shell/java/dev/denoapk/shell/Router.java"),
       join(root, "shell/java/dev/denoapk/shell/Permissions.java"),
       join(root, "shell/java/dev/denoapk/shell/NetworkTargets.java"),
+      join(root, "shell/java/dev/denoapk/shell/SetCookies.java"),
       join(root, "shell/test/RouterTest.java"),
       join(root, "shell/test/PermissionsTest.java"),
       join(root, "shell/test/NetworkTargetsTest.java"),
+      join(root, "shell/test/SetCookiesTest.java"),
     ],
     stdout: "inherit",
     stderr: "inherit",
   }).output();
   if (compile.code !== 0) Deno.exit(compile.code);
 
-  for (const cls of ["RouterTest", "PermissionsTest", "NetworkTargetsTest"]) {
+  for (
+    const cls of [
+      "RouterTest",
+      "PermissionsTest",
+      "NetworkTargetsTest",
+      "SetCookiesTest",
+    ]
+  ) {
     const run = await new Deno.Command("java", {
       args: ["-cp", `${out}:${sdk.androidJar}`, cls],
       stdout: "inherit",

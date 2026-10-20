@@ -48,6 +48,7 @@
   const EXEC = "/__denoapk/exec/";
   const EXEC_STREAM = "/__denoapk/exec-stream/";
   const PREFIX = "x-denoapk-h-";
+  const SET_COOKIE = "x-denoapk-set-cookie";
   const orig = globalThis.fetch;
 
   globalThis.fetch = function (input, init = {}) {
@@ -70,8 +71,36 @@
     return orig(PROXY + encodeURIComponent(url.href), {
       ...init,
       headers: encoded,
-    });
+    }).then(exposeSetCookie);
   };
+
+  // A WebView hides Set-Cookie from fetch(), so the host re-sends the
+  // target's Set-Cookie lines as a JSON array under `x-denoapk-set-cookie`.
+  // Surfacing them through the standard Headers.getSetCookie() lets app code
+  // read rotated cookies exactly as it would under Deno's own fetch.
+  function exposeSetCookie(res) {
+    let cookies = [];
+    const raw = res.headers.get(SET_COOKIE);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          cookies = parsed.filter((c) => typeof c === "string");
+        }
+      } catch {
+        // Malformed header: behave as if no cookies were set.
+      }
+    }
+    try {
+      Object.defineProperty(res.headers, "getSetCookie", {
+        value: () => cookies.slice(),
+        configurable: true,
+      });
+    } catch {
+      // Leave the native method in place.
+    }
+    return res;
+  }
 
   // Same-origin by construction, so this never touches the fetch override
   // above — it goes straight to the host, native on Android or Deno.Command
