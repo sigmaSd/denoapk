@@ -178,6 +178,41 @@ function encodeSetCookies(cookies: string[]): string {
   );
 }
 
+/**
+ * The proxy timeout only covers waiting for headers, so the body gets its
+ * own: each read from upstream must finish within `timeoutMs`. A pooled
+ * connection that dies mid-response (the peer forgot it during a system
+ * suspend) otherwise never errors, and the page's fetch waits on it forever.
+ * Only time spent waiting on upstream counts, not a slow reader downstream.
+ */
+function withReadTimeout(
+  body: ReadableStream<Uint8Array>,
+  abort: AbortController,
+  timeoutMs: number,
+): ReadableStream<Uint8Array> {
+  const reader = body.getReader();
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      const timer = setTimeout(() => {
+        resetProxyClient();
+        abort.abort(new Error("proxy response body timed out"));
+      }, timeoutMs);
+      try {
+        const { done, value } = await reader.read();
+        if (done) controller.close();
+        else controller.enqueue(value);
+      } catch (e) {
+        controller.error(e);
+      } finally {
+        clearTimeout(timer);
+      }
+    },
+    cancel(reason) {
+      return reader.cancel(reason);
+    },
+  });
+}
+
 async function handleProxy(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const rawEncoded = url.pathname.slice(PROXY_PREFIX.length);
@@ -226,8 +261,8 @@ async function handleProxy(req: Request): Promise<Response> {
   }
 
   let proxied: Response;
+  const controller = new AbortController();
   try {
-    const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), PROXY_TIMEOUT_MS);
     try {
       proxied = await fetch(target.href, {
@@ -263,7 +298,9 @@ async function handleProxy(req: Request): Promise<Response> {
   // Don't set content-length; let Deno chunk it
   const status = proxied.status;
   // Use proxied body as stream to avoid buffering large bodies
-  return new Response(proxied.body, {
+  const stream = proxied.body &&
+    withReadTimeout(proxied.body, controller, PROXY_TIMEOUT_MS);
+  return new Response(stream, {
     status,
     statusText: statusText(status),
     headers,
